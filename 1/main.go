@@ -22,11 +22,11 @@ func (u *user) printAllChildren() {
 		if child == nil {
 			break
 		}
-		fullname := strings.Split(child.name, " ")
-		if strings.Contains(fullname[1], "Ж") {
-			fmt.Println(fullname[0], "- дочь")
+		fullName := strings.Split(child.name, " ")
+		if strings.Contains(fullName[1], "Ж") {
+			fmt.Println(fullName[0], "- дочь")
 		} else {
-			fmt.Println(fullname[0], "- сын")
+			fmt.Println(fullName[0], "- сын")
 		}
 
 		child = child.next
@@ -34,11 +34,11 @@ func (u *user) printAllChildren() {
 }
 
 func (u *user) printAllRelatives() {
-	fullname := strings.Split(u.pair.name, " ")
-	if strings.Contains(fullname[1], "Ж") {
-		fmt.Println(fullname[0], "- жена")
+	fullName := strings.Split(u.pair.name, " ")
+	if strings.Contains(fullName[1], "Ж") {
+		fmt.Println(fullName[0], "- жена")
 	} else {
-		fmt.Println(fullname[0], "- муж")
+		fmt.Println(fullName[0], "- муж")
 	}
 	u.printAllChildren()
 }
@@ -78,9 +78,14 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	defer file.Close()
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			os.Exit(1)
+		}
+	}(file)
 
-	users := []user{}
+	var users []user
 	state := 0
 
 	scanner := bufio.NewScanner(file)
@@ -138,9 +143,9 @@ func main() {
 
 	//fmt.Println(users)
 
-	inpt_scanner := bufio.NewScanner(os.Stdin)
-	for inpt_scanner.Scan() {
-		users[getUserIndex(users, inpt_scanner.Text())-1].printAllRelatives()
+	inptScanner := bufio.NewScanner(os.Stdin)
+	for inptScanner.Scan() {
+		users[getUserIndex(users, inptScanner.Text())-1].printAllRelatives()
 	}
 
 	//users[getUserIndex(users, "Зоя")-1].printAllRelatives()
