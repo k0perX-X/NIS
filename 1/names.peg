@@ -1,0 +1,42 @@
+{
+	package main
+}
+
+
+File         <-  (Section / BlankLine)* !.
+BlankLine    <-  [ \t]* ("\r\n" / "\n" / "\r")
+Section      <-  Header ContentLines
+Header       <-  "#" Spacing HeaderText:HeaderName ":" EndOfLine
+HeaderName   <-  (![:\r\n] .)+
+ContentLines <-  (Line EndOfLine)+
+Line         <-  NamesLine / MarriedLine / ChildLine
+NamesLines 	 <- (NamesLine EndOfLine)*
+
+NamesLine <- name:Name Spacing "(" Spacing gender:GenderSymbol ")" {
+	addPerson(string(name.([]uint8)), string(gender.([]uint8)))
+	return nil, nil
+}
+
+// MarriedLine: "Акакий <-> Аза"
+MarriedLine  <-  nameA:Name Spacing "<->" Spacing nameB:Name {
+	addPair(string(nameA.([]uint8)), string(nameB.([]uint8)))
+	return nil, nil
+}
+
+// ChildLine: e.g. "Константин -> Авдей"
+ChildLine	<-  parent:Name Spacing "->" Spacing kid:Name {
+	addChildren(string(parent.([]uint8)), string(kid.([]uint8)))
+	return nil, nil
+}
+
+Name <- [\p{L}\p{N}]+ { return c.text, nil }
+
+GenderSymbol <- "М" / "Ж" { return c.text, nil }
+
+Spacing <- [ \t]*
+
+EndOfLine <- ("\r\n" / "\n" / "\r")
+
+// EndOfInput: asserts that no further input remains.
+EndOfInput <- !.
+
