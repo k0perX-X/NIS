@@ -9,7 +9,7 @@ Section      <-  Header ContentLines
 Header       <-  "#" Spacing HeaderText:HeaderName ":" EndOfLine
 HeaderName   <-  (![:\r\n] .)+
 ContentLines <-  (Line EndOfLine)+
-Line         <-  NamesLine / MarriedLine / ChildLine
+Line         <-  NamesLine / MarriedLine / ChildLine / RelationLine
 NamesLines 	 <- (NamesLine EndOfLine)*
 
 NamesLine <- name:Name Spacing "(" Spacing gender:GenderSymbol ")" {
@@ -29,9 +29,17 @@ ChildLine	<-  parent:Name Spacing "->" Spacing kid:Name {
 	return nil, nil
 }
 
+// RelationLine: e.g. "шурин: ПЖ->Р->ДМ"
+RelationLine	<-  desc:Name Spacing "-" Spacing path:Str {
+	addRelation(string(desc.([]uint8)), string(path.([]uint8)))
+	return nil, nil
+}
+
 Name <- [\p{L}\p{N}]+ { return c.text, nil }
 
 GenderSymbol <- "М" / "Ж" { return c.text, nil }
+
+Str <- ( !EndOfLine . )* { return c.text, nil }
 
 Spacing <- [ \t]*
 
