@@ -1,152 +1,158 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	//"io"
 	"bufio"
+	"fmt"
+	"log"
+	"os"
 	"strings"
 )
 
-type user struct {
-	name       string
-	pair       *user
-	firstChild *user
-	next       *user
+type Person struct {
+	Name   string
+	Gender string
+	Parent *Person
+	Pair   *Person
+	Child  *Person
+	Next   *Person
+	Marked bool
 }
 
-func (u *user) printAllChildren() {
+type RelationDesc struct {
+	Description string
+	Path        string
+}
 
-	var child *user = u.firstChild
-	for {
-		if child == nil {
-			break
-		}
-		fullName := strings.Split(child.name, " ")
-		if strings.Contains(fullName[1], "Ж") {
-			fmt.Println(fullName[0], "- дочь")
-		} else {
-			fmt.Println(fullName[0], "- сын")
-		}
+var inputFileName = "input.txt"
+var relationshipFileName = "relationships.txt"
 
-		child = child.next
+var head *Person = nil
+var tail *Person = nil
+
+var user []Person
+var relationList []RelationDesc
+
+func init() {
+	user = make([]Person, 0)
+}
+
+func addPerson(name, gender string) {
+	p := &Person{
+		Name:   name,
+		Gender: gender,
 	}
+	user = append(user, *p)
 }
 
-func (u *user) printAllRelatives() {
-	fullName := strings.Split(u.pair.name, " ")
-	if strings.Contains(fullName[1], "Ж") {
-		fmt.Println(fullName[0], "- жена")
+func addPair(pairNameA, pairNameB string) {
+	indexA := getUserIndex(user, pairNameA)
+	indexB := getUserIndex(user, pairNameB)
+
+	user[indexA].Pair = &user[indexB]
+	user[indexB].Pair = &user[indexA]
+}
+
+func addChildren(parentName, childName string) {
+	indexP := getUserIndex(user, parentName)
+	indexC := getUserIndex(user, childName)
+
+	if user[indexP].Child == nil {
+		user[indexP].Child = &user[indexC]
+		if user[indexP].Pair != nil {
+			user[indexP].Pair.Child = &user[indexC]
+		}
 	} else {
-		fmt.Println(fullName[0], "- муж")
+		lastKidName_idx := getUserIndex(user, user[indexP].GetLastChildName())
+		user[lastKidName_idx].Next = &user[indexC]
 	}
-	u.printAllChildren()
+	if indexP > 0 {
+		user[indexC].Parent = &user[indexP]
+	}
 }
 
-func (u *user) getLastChildName() string {
-
-	var child *user = u.firstChild
-	var name string
-	for {
-		if child == nil {
-			break
-		}
-		//fmt.Println(child.name)
-		name = strings.Split(child.name, " ")[0]
-		child = child.next
+func addRelation(desc string, path string) {
+	r := RelationDesc{
+		Description: desc,
+		Path:        path,
 	}
-	return name
+	relationList = append(relationList, r)
 }
 
-func getUserIndex(arr []user, name string) int {
+func getUserIndex(arr []Person, name string) int {
 	if name == "" {
 		return 0
 	}
 
 	for i := 0; i < len(arr); i++ {
-		if strings.Contains(arr[i].name, name) {
-			//fmt.Println("Get user: ", arr[i].name)
-			return i + 1
+		if strings.Contains(arr[i].Name, name) {
+			return i
 		}
 	}
 	return 0
 }
 
+func clearMarks() {
+	for index := range user {
+		user[index].Marked = false
+	}
+}
+
+func (p *Person) GetLastChildName() string {
+
+	var child *Person = p.Child
+	var name string
+	for {
+		if child == nil {
+			break
+		}
+		name = child.Name
+		child = child.Next
+	}
+	return name
+}
+
+func (p *Person) PrintAllRelationsFromList(relationships []RelationDesc) {
+	for index := range relationships {
+		clearMarks()
+		p.CheckRelation(relationships[index].Path, relationships[index].Description)
+	}
+}
+
 func main() {
-	file, err := os.Open("input.txt")
+
+	//addRelation("внучка", "Д->ДЖ")
+	//addRelation("брат", "Р->ДМ")
+	//addRelation("сестра", "Р->ДЖ")
+	//addRelation("мама", "РЖ")
+	//addRelation("папа", "РМ")
+	//addRelation("дочь", "ДЖ")
+	//addRelation("сын", "ДМ")
+	//addRelation("жена", "ПЖ")
+	//addRelation("муж", "ПМ")
+	//addRelation("бабушка", "Р->РЖ")
+	//addRelation("дедушка", "Р->РМ")
+	//addRelation("внук", "Д->ДМ")
+	//addRelation("теща", "ПЖ->РЖ")
+	//addRelation("свекр", "ПМ->РМ")
+	//addRelation("шурин", "ПЖ->Р->ДМ")
+
+	_, err := ParseFile(inputFileName)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			os.Exit(1)
-		}
-	}(file)
-
-	var users []user
-	state := 0
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		if line == "" {
-			//fmt.Println("Empty string")
-		} else if line[0] == '#' {
-			if strings.Contains(line, "Имена") {
-				//fmt.Println("Стадия 1: Имена")
-				state = 1
-			} else if strings.Contains(line, "женат") {
-				//fmt.Println("Стадия 2: Супруги")
-				state = 2
-			} else if strings.Contains(line, "ребёнок") {
-				//fmt.Println("Стадия 3: Дети")
-				state = 3
-			}
-		} else {
-			if state == 1 {
-				u := new(user)
-				u.name = line
-				users = append(users, *u)
-			} else if state == 2 {
-				pair := strings.Split(line, " <-> ")
-				i1 := getUserIndex(users, pair[0])
-				i2 := getUserIndex(users, pair[1])
-				if i1 > 0 && i2 > 0 {
-					users[i1-1].pair = &users[i2-1]
-					users[i2-1].pair = &users[i1-1]
-				}
-			} else if state == 3 {
-				pair := strings.Split(line, " -> ")
-				parent_i := getUserIndex(users, pair[0])
-				newChild_i := getUserIndex(users, pair[1])
-				if parent_i > 0 && newChild_i > 0 {
-
-					if users[parent_i-1].firstChild == nil {
-						users[parent_i-1].firstChild = &users[newChild_i-1]
-						users[parent_i-1].pair.firstChild = &users[newChild_i-1]
-						//fmt.Println("First child for ", pair[0], " is ", pair[1])
-					} else {
-						lastChild_name := users[parent_i-1].getLastChildName()
-						lastChild_i := getUserIndex(users, lastChild_name)
-						users[lastChild_i-1].next = &users[newChild_i-1]
-						//fmt.Println("Next sibling for ", lastChild_name, " is ", pair[1])
-					}
-				}
-			}
-		}
-
-		//fmt.Println(line)
+		log.Fatalf("Error parsing input file: %s", err)
 	}
 
-	//fmt.Println(users)
+	_, err = ParseFile(relationshipFileName)
+	if err != nil {
+		log.Fatalf("Error parsing relationship file: %s", err)
+	}
+
+	for index := range relationList {
+		fmt.Println(relationList[index].Description, relationList[index].Path)
+	}
 
 	inptScanner := bufio.NewScanner(os.Stdin)
 	for inptScanner.Scan() {
-		users[getUserIndex(users, inptScanner.Text())-1].printAllRelatives()
+		user[getUserIndex(user, inptScanner.Text())].PrintAllRelationsFromList(relationList)
 	}
 
-	//users[getUserIndex(users, "Зоя")-1].printAllRelatives()
 }
