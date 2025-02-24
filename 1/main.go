@@ -18,57 +18,23 @@ type Person struct {
 	Marked bool
 }
 
+type RelationDesc struct {
+	Description string
+	Path        string
+}
+
+var inputFileName = "input.txt"
+var relationshipFileName = "relationships.txt"
+
 var head *Person = nil
 var tail *Person = nil
 
 var user []Person
+var relationList []RelationDesc
 
 func init() {
 	user = make([]Person, 0)
 }
-
-func (p *Person) getLastChildName() string {
-
-	var child *Person = p.Child
-	var name string
-	for {
-		if child == nil {
-			break
-		}
-		name = child.Name
-		child = child.Next
-	}
-	return name
-}
-
-/*
-func (p *Person) printAllChildren() {
-
-	var child *Person = p.Child
-	for {
-		if child == nil {
-			break
-		}
-		if child.Gender == "Ж" {
-			fmt.Println(child.Name + " - дочь")
-		} else {
-			fmt.Println(child.Name + " - сын")
-		}
-
-		child = child.Next
-	}
-}
-
-func (p *Person) printAllRelatives() {
-	if p.Pair != nil {
-		if p.Pair.Gender == "Ж" {
-			fmt.Println(p.Pair.Name + " - жена")
-		} else {
-			fmt.Println(p.Pair.Name + " - муж")
-		}
-	}
-	p.printAllChildren()
-}*/
 
 func addPerson(name, gender string) {
 	p := &Person{
@@ -92,9 +58,11 @@ func addChildren(parentName, childName string) {
 
 	if user[indexP].Child == nil {
 		user[indexP].Child = &user[indexC]
-		user[indexP].Pair.Child = &user[indexC]
+		if user[indexP].Pair != nil {
+			user[indexP].Pair.Child = &user[indexC]
+		}
 	} else {
-		lastKidName_idx := getUserIndex(user, user[indexP].getLastChildName())
+		lastKidName_idx := getUserIndex(user, user[indexP].GetLastChildName())
 		user[lastKidName_idx].Next = &user[indexC]
 	}
 	if indexP > 0 {
@@ -102,101 +70,12 @@ func addChildren(parentName, childName string) {
 	}
 }
 
-type RelationDesc struct {
-	Description string
-	Path        string
-}
-
-var relationList []RelationDesc
-
 func addRelation(desc string, path string) {
 	r := RelationDesc{
 		Description: desc,
 		Path:        path,
 	}
 	relationList = append(relationList, r)
-}
-
-func clearMarks() {
-	for index := range user {
-		user[index].Marked = false
-	}
-}
-
-func (p *Person) mark() {
-	p.Marked = true
-}
-
-func (p *Person) printOrCheckRelation(code string, desc string) {
-	first_ins := strings.Index(code, "->")
-
-	if first_ins < 0 {
-		fmt.Println(p.Name + " - " + desc)
-	} else {
-		p.checkRelation(code[first_ins+2:], desc)
-	}
-}
-
-func (p *Person) checkRelation(code string, desc string) {
-	if p.Marked {
-		return
-	}
-	p.mark()
-	first_ins := strings.Index(code, "->")
-
-	act_code := code
-
-	if first_ins > 0 {
-		act_code = code[:first_ins]
-	}
-
-	next := p
-	if strings.Contains(act_code, "Р") {
-		next = p.Parent
-	} else if strings.Contains(act_code, "Д") {
-		next = p.Child
-	} else if strings.Contains(act_code, "П") {
-		next = p.Pair
-	} else {
-		return
-	}
-	for {
-		if next == nil {
-			break
-		}
-
-		if strings.Contains(act_code, "Ж") {
-			if strings.Contains(next.Gender, "Ж") {
-				next.printOrCheckRelation(code, desc)
-			}
-
-		} else if strings.Contains(act_code, "М") {
-			if strings.Contains(next.Gender, "М") {
-				next.printOrCheckRelation(code, desc)
-			}
-		} else {
-			next.printOrCheckRelation(code, desc)
-		}
-
-		if strings.Contains(act_code, "Р") {
-			if strings.Contains(next.Gender, "М") {
-				next = next.Pair
-			} else {
-				next = nil
-			}
-		} else if strings.Contains(act_code, "Д") {
-			next = next.Next
-		} else {
-			next = nil
-		}
-	}
-}
-
-func (p *Person) printAllRelationsFromDSL() {
-	for index := range relationList {
-		clearMarks()
-		p.checkRelation(relationList[index].Path, relationList[index].Description)
-	}
 }
 
 func getUserIndex(arr []Person, name string) int {
@@ -210,6 +89,33 @@ func getUserIndex(arr []Person, name string) int {
 		}
 	}
 	return 0
+}
+
+func clearMarks() {
+	for index := range user {
+		user[index].Marked = false
+	}
+}
+
+func (p *Person) GetLastChildName() string {
+
+	var child *Person = p.Child
+	var name string
+	for {
+		if child == nil {
+			break
+		}
+		name = child.Name
+		child = child.Next
+	}
+	return name
+}
+
+func (p *Person) PrintAllRelationsFromList(relationships []RelationDesc) {
+	for index := range relationships {
+		clearMarks()
+		p.CheckRelation(relationships[index].Path, relationships[index].Description)
+	}
 }
 
 func main() {
@@ -230,15 +136,14 @@ func main() {
 	//addRelation("свекр", "ПМ->РМ")
 	//addRelation("шурин", "ПЖ->Р->ДМ")
 
-	//_, err := Parse("input.txt", []byte(input))
-	_, err := ParseFile("input.txt")
+	_, err := ParseFile(inputFileName)
 	if err != nil {
-		log.Fatalf("Error parsing input: %s", err)
+		log.Fatalf("Error parsing input file: %s", err)
 	}
 
-	_, err = ParseFile("relationships.txt")
+	_, err = ParseFile(relationshipFileName)
 	if err != nil {
-		log.Fatalf("Error parsing input: %s", err)
+		log.Fatalf("Error parsing relationship file: %s", err)
 	}
 
 	for index := range relationList {
@@ -247,8 +152,7 @@ func main() {
 
 	inptScanner := bufio.NewScanner(os.Stdin)
 	for inptScanner.Scan() {
-		//user[getUserIndex(user, inptScanner.Text())].printAllRelatives()
-		user[getUserIndex(user, inptScanner.Text())].printAllRelationsFromDSL()
+		user[getUserIndex(user, inptScanner.Text())].PrintAllRelationsFromList(relationList)
 	}
 
 }
